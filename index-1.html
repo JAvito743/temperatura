@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Detector de humedad para plantas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@600;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,700;6..12,800&family=Fira+Code:wght@400;600&display=swap">
+<style>
+/* Layout: cuaderno de huerta escolar; la maceta simulada abre la página y la protoboard se construye junto con los pasos. */
+:root{
+  --bg:#F2F5EF; --surface:#FFFFFF; --ink:#18241C; --muted:#4F5E54; --line:#D3DCD2;
+  --accent:#2C6B3E; --accent-soft:#E2EFE3; --on-accent:#FFFFFF;
+  --water:#2B78B8; --water-soft:#DCEBF6;
+  --dry:#B93A2B; --mid:#B87A00; --wet:#2C7A47;
+  --soil-dry:#C8A06B; --soil-wet:#4B2E1C; --leaf:#3E8E4F; --leaf-dry:#A69A3C;
+  --pot:#B4593A; --pot-rim:#9C4A2E; --metal:#A7ADB2; --pcb:#2D5FA8; --sky:#E6EEF0; --table:#D9CDBB;
+  --w-red:#D2382B; --w-gnd:#36403A; --w-yel:#C99A00; --w-blue:#2563EB; --w-pur:#7C3AED; --w-grn:#2C7A47; --w-org:#E07B00; --w-led-red:#B91C1C; --w-amb:#D08A00;
+  --code-bg:#17221B; --code-fg:#E5ECE6; --code-dim:#8DA093; --code-key:#9FD8A9; --code-str:#F2C46D;
+  --led-off:#C7CFC7;
+  --f-display:"Gabarito", "Trebuchet MS", system-ui, sans-serif;
+  --f-body:"Nunito Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"Fira Code", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101612; --surface:#18211B; --ink:#E4ECE5; --muted:#A0B0A4; --line:#2C3A30;
+  --accent:#7CC48C; --accent-soft:#1D3123; --on-accent:#101612;
+  --water:#5DA8E8; --water-soft:#15283A;
+  --dry:#F06A5A; --mid:#E8B234; --wet:#5CC07E;
+  --soil-dry:#9E7E54; --soil-wet:#3A2416; --leaf:#5DAA6C; --leaf-dry:#A39747;
+  --pot:#A4543A; --pot-rim:#8C4530; --metal:#8E959A; --pcb:#4A7CC8; --sky:#16211C; --table:#3A332A;
+  --w-red:#F06A5E; --w-gnd:#A9B6AC; --w-yel:#EBC23A; --w-blue:#6C9BFF; --w-pur:#A98BFA; --w-grn:#5CC07E; --w-org:#F7A23B; --w-led-red:#F26B6B; --w-amb:#F0B43A;
+  --code-bg:#0B100D; --code-fg:#E5ECE6; --code-dim:#86998C; --code-key:#9FD8A9; --code-str:#F2C46D;
+  --led-off:#334036; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#101612; --surface:#18211B; --ink:#E4ECE5; --muted:#A0B0A4; --line:#2C3A30;
+  --accent:#7CC48C; --accent-soft:#1D3123; --on-accent:#101612;
+  --water:#5DA8E8; --water-soft:#15283A;
+  --dry:#F06A5A; --mid:#E8B234; --wet:#5CC07E;
+  --soil-dry:#9E7E54; --soil-wet:#3A2416; --leaf:#5DAA6C; --leaf-dry:#A39747;
+  --pot:#A4543A; --pot-rim:#8C4530; --metal:#8E959A; --pcb:#4A7CC8; --sky:#16211C; --table:#3A332A;
+  --w-red:#F06A5E; --w-gnd:#A9B6AC; --w-yel:#EBC23A; --w-blue:#6C9BFF; --w-pur:#A98BFA; --w-grn:#5CC07E; --w-org:#F7A23B; --w-led-red:#F26B6B; --w-amb:#F0B43A;
+  --code-bg:#0B100D; --code-fg:#E5ECE6; --code-dim:#86998C; --code-key:#9FD8A9; --code-str:#F2C46D;
+  --led-off:#334036; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.wrap{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:60px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.05}
+h1{font-size:clamp(40px,6.6vw,72px);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(28px,3.8vw,40px);font-weight:800;letter-spacing:-.01em}
+h3{font-size:22px;font-weight:600}
+p{margin:0}
+a{color:var(--accent)}
+.eyebrow{font-family:var(--f-mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.lead{font-size:20px;color:var(--muted);max-width:60ch}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono)}
+section{display:flex;flex-direction:column;gap:20px;scroll-margin-top:72px}
+.sec-head{display:flex;flex-direction:column;gap:8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px}
+button{font:inherit;font-weight:800;cursor:pointer;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 18px;min-height:44px}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible,pre:focus-visible,select:focus-visible{outline:3px solid var(--water);outline-offset:2px}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn-water{background:var(--water);border-color:var(--water);color:var(--surface)}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.top nav{max-width:1060px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.top nav a{flex:none;text-decoration:none;color:var(--ink);font-weight:800;font-size:15px;padding:8px 12px;border-radius:999px}
+.top nav a:hover{background:var(--accent-soft)}
+
+.hero{padding-top:40px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:36px;align-items:end}
+.hero-text{display:flex;flex-direction:column;gap:16px;min-width:0}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.fact{background:var(--surface);padding:14px 18px;display:flex;flex-direction:column;gap:2px}
+.fact b{font-family:var(--f-display);font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.fact span{font-size:14px;color:var(--muted)}
+
+/* Simulador */
+.sim{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;align-items:start}
+.scene-wrap{border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--sky)}
+.scene{display:block;width:100%;height:auto}
+.scene text{font-family:var(--f-mono)}
+.gauge{display:flex;flex-direction:column;gap:8px}
+.gauge-bar{position:relative;height:18px;border-radius:99px;background:linear-gradient(90deg,var(--dry) 0 var(--g1),var(--mid) var(--g1) var(--g2),var(--wet) var(--g2) 100%)}
+.gauge-mark{position:absolute;top:-6px;width:4px;height:30px;border-radius:2px;background:var(--ink);transform:translateX(-2px);transition:left .15s}
+.gauge-scale{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.readout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ro{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--bg);display:flex;flex-direction:column;gap:2px;min-width:0}
+.ro span{font-size:12px;color:var(--muted);font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.06em}
+.ro b{font-family:var(--f-display);font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.status{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;font-weight:800;font-size:18px;border:1.5px solid currentColor}
+.status i{width:14px;height:14px;border-radius:50%;background:currentColor;flex:none}
+.leds{display:flex;gap:16px;flex-wrap:wrap}
+.led{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.led i{width:20px;height:20px;border-radius:50%;background:var(--led-off);transition:background-color .15s,box-shadow .15s}
+.led.on.r i{background:var(--w-led-red);box-shadow:0 0 12px var(--w-led-red)}
+.led.on.y i{background:var(--w-amb);box-shadow:0 0 12px var(--w-amb)}
+.led.on.g i{background:var(--w-grn);box-shadow:0 0 12px var(--w-grn)}
+.led.on.b i{background:var(--mid);box-shadow:0 0 12px var(--mid)}
+.led.on.p i{background:var(--water);box-shadow:0 0 12px var(--water)}
+.ctl{display:flex;flex-direction:column;gap:6px}
+.ctl label{display:flex;justify-content:space-between;font-weight:800;gap:10px}
+.ctl output{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.toggles{display:flex;flex-direction:column;gap:6px}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;font-weight:700;cursor:pointer}
+.switch input{appearance:none;-webkit-appearance:none;width:48px;height:28px;border-radius:99px;background:var(--line);position:relative;cursor:pointer;flex:none;transition:background-color .2s;margin:0}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--surface);transition:left .2s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{left:23px}
+.serial{font-family:var(--f-mono);font-size:13px;background:var(--code-bg);color:var(--code-fg);border-radius:12px;padding:12px 14px;height:132px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;white-space:pre}
+
+/* Materiales */
+.progress{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bar{flex:1 1 220px;height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.mat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.mat-group{display:flex;flex-direction:column;gap:4px}
+.mat-group h3{margin-bottom:8px}
+.mat{display:grid;grid-template-columns:28px 42px minmax(0,1fr);gap:8px;align-items:start;padding:10px 2px;border-top:1px solid var(--line);cursor:pointer}
+.mat:first-of-type{border-top:0}
+.mat input{width:22px;height:22px;margin:2px 0 0;accent-color:var(--accent)}
+.qty{font-family:var(--f-mono);font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums}
+.mat .name{font-weight:800}
+.mat small{display:block;color:var(--muted);font-size:14px;line-height:1.4}
+.mat.done .name{text-decoration:line-through;text-decoration-color:var(--accent)}
+
+/* Armado */
+.board-wrap{overflow-x:auto;padding:12px}
+.board-wrap svg{display:block;min-width:660px;width:100%;height:auto}
+.board-wrap text{font-family:var(--f-mono);font-size:13px;fill:var(--ink)}
+.board-wrap .lbl{font-family:var(--f-display);font-weight:800;font-size:18px}
+.board-wrap .hole{fill:var(--muted);opacity:.38}
+.board-wrap .bbl{font-size:11px;fill:var(--muted)}
+.board-wrap .bboard{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.board-wrap .ard{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+.board-wrap .wire{fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+.board-wrap .dot{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+.board-wrap [data-g]{transition:opacity .25s}
+.board-wrap [data-g].old{opacity:.3}
+.stepper{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.stepper button.chip{min-width:44px;padding:8px 0;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.stepper button.chip[aria-current="step"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.stepper button.chip.is-done:not([aria-current="step"]){border-color:var(--accent);color:var(--accent)}
+.stepper .spacer{flex:1}
+.build{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.step-card{display:flex;flex-direction:column;gap:14px;min-width:0}
+.step-card h3{font-size:28px}
+.step-card ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px}
+.note{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;padding:12px 14px;border-radius:12px;background:var(--accent-soft);font-size:16px}
+.note.warn{background:color-mix(in srgb,var(--dry) 12%,var(--surface))}
+.note strong{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding-top:3px}
+.step-foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);padding-top:14px}
+.step-foot label{display:flex;gap:10px;align-items:center;font-weight:800;cursor:pointer;min-height:44px}
+.step-foot input{width:22px;height:22px;accent-color:var(--accent)}
+.step-nav{display:flex;gap:8px}
+.holes{display:flex;flex-direction:column;min-width:0}
+.holes h3{margin-bottom:10px}
+.hrow{display:grid;grid-template-columns:14px minmax(0,1fr);gap:10px;align-items:start;padding:9px 0;border-top:1px solid var(--line)}
+.hrow:first-of-type{border-top:0}
+.hrow .sw{width:14px;height:14px;border-radius:4px;margin-top:4px;box-shadow:inset 0 0 0 1px var(--line)}
+.hrow b{display:block}
+.hrow span{font-family:var(--f-mono);font-size:14px;color:var(--muted)}
+.empty{color:var(--muted);font-style:italic}
+
+/* Código */
+.calib{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:end}
+.calib label,.calib .fld{display:flex;flex-direction:column;gap:4px;font-size:14px;font-weight:800;color:var(--muted)}
+.calib input,.calib select{font:inherit;font-family:var(--f-mono);font-size:17px;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;min-height:44px;width:100%}
+.err{color:var(--dry);font-weight:800;font-size:15px}
+.code{display:flex;flex-direction:column;min-width:0;border-radius:16px;overflow:hidden;background:var(--code-bg);border:1px solid var(--line)}
+.code-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px 10px 16px;border-bottom:1px solid rgba(255,255,255,.08);color:var(--code-dim);font-family:var(--f-mono);font-size:13px}
+.code-bar button{background:transparent;color:var(--code-fg);border-color:rgba(255,255,255,.25);padding:6px 14px;min-height:38px;font-size:14px}
+.code pre{margin:0;padding:16px;overflow:auto;max-height:620px;font-family:var(--f-mono);font-size:13.5px;line-height:1.6;color:var(--code-fg)}
+.code .c{color:var(--code-dim)} .code .k{color:var(--code-key)} .code .s{color:var(--code-str)}
+.code mark{background:rgba(159,216,169,.18);color:inherit;border-radius:3px}
+
+/* Problemas y quiz */
+details{border-top:1px solid var(--line);padding:4px 0}
+details:last-child{border-bottom:1px solid var(--line)}
+summary{cursor:pointer;font-weight:800;padding:12px 4px;min-height:44px}
+details p{padding:0 4px 14px;color:var(--muted);max-width:70ch}
+.quiz{display:flex;flex-direction:column;gap:16px}
+.q{display:flex;flex-direction:column;gap:12px}
+.q-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.q h3{font-size:24px}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.opts button{border-radius:12px;text-align:left;font-weight:700;padding:12px 16px}
+.opts button.right{background:color-mix(in srgb,var(--wet) 18%,var(--surface));border-color:var(--wet)}
+.opts button.wrong{background:color-mix(in srgb,var(--dry) 14%,var(--surface));border-color:var(--dry)}
+.feedback{padding:12px 14px;border-radius:12px;background:var(--bg);border:1px solid var(--line)}
+.dots{display:flex;gap:6px}
+.dots i{width:12px;height:12px;border-radius:50%;background:var(--line)}
+.dots i.ok{background:var(--wet)} .dots i.no{background:var(--dry)} .dots i.cur{outline:2px solid var(--ink);outline-offset:1px}
+
+@media (max-width:860px){
+  .hero,.sim,.build{grid-template-columns:minmax(0,1fr)}
+  .mat-grid{grid-template-columns:minmax(0,1fr)}
+  .calib{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .opts{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <nav aria-label="Secciones">
+    <a href="#simulador">Simulador</a>
+    <a href="#materiales">Materiales</a>
+    <a href="#armado">Arma el circuito</a>
+    <a href="#codigo">Calibra y programa</a>
+    <a href="#problemas">Problemas comunes</a>
+    <a href="#quiz">Ponte a prueba</a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-text">
+      <p class="eyebrow">Proyecto · Tecnología e Informática</p>
+      <h1>Detector de humedad para plantas</h1>
+      <p class="lead">Una sonda clavada en la tierra mide cuánta agua tiene la maceta. Tres LEDs indican si la planta está seca, algo seca o bien regada, y un pito avisa cuando necesita agua. Como nivel avanzado, un relé enciende una minibomba para regar sola.</p>
+    </div>
+    <div class="facts" aria-label="Datos del proyecto">
+      <div class="fact"><b>0–1023</b><span>lectura del pin A0</span></div>
+      <div class="fact"><b>3 niveles</b><span>seca · algo seca · regada</span></div>
+      <div class="fact"><b>9 pasos</b><span>con protoboard guiada</span></div>
+      <div class="fact"><b>90–120 min</b><span>tiempo estimado</span></div>
+    </div>
+  </div>
+
+  <!-- SIMULADOR -->
+  <section id="simulador">
+    <div class="sec-head">
+      <p class="eyebrow">Banco de pruebas</p>
+      <h2>La maceta simulada</h2>
+      <p class="muted">La tierra se seca sola con el tiempo. Riégala, cambia la humedad a mano o activa el riego automático y observa la lectura, los LEDs y la planta.</p>
+    </div>
+    <div class="sim">
+      <div class="side">
+        <div class="scene-wrap">
+          <svg class="scene" id="scene" viewBox="0 0 560 300" role="img" aria-labelledby="sceneDesc">
+            <desc id="sceneDesc">Una maceta con una planta y la sonda de humedad clavada en la tierra, conectada a un Arduino con tres LEDs. A la izquierda, un tanque con bomba y manguera.</desc>
+            <rect x="0" y="262" width="560" height="38" fill="var(--table)"></rect>
+            <g id="tankGroup">
+              <text x="70" y="182" text-anchor="middle" font-size="11" fill="var(--muted)">tanque + bomba</text>
+              <rect x="32" y="214" width="76" height="62" fill="var(--water)" opacity=".45"></rect>
+              <rect x="30" y="190" width="80" height="88" rx="4" fill="none" stroke="var(--ink)" stroke-width="2"></rect>
+              <rect x="56" y="252" width="28" height="20" rx="3" fill="var(--ink)"></rect>
+              <path d="M70 252 V112 H198 V128" fill="none" stroke="var(--metal)" stroke-width="6" stroke-linejoin="round"></path>
+              <text id="pumpTxt" x="70" y="296" text-anchor="middle" font-size="11" fill="var(--muted)">bomba apagada</text>
+            </g>
+            <g id="drops"></g>
+            <!-- planta -->
+            <g id="plant">
+              <path id="stem" d="M240 182 Q240 130 240 82" fill="none" stroke="var(--leaf)" stroke-width="5" stroke-linecap="round"></path>
+              <g id="leaves"></g>
+            </g>
+            <!-- maceta -->
+            <path d="M154 188 L326 188 L306 276 L174 276 Z" fill="var(--pot)"></path>
+            <rect x="146" y="176" width="188" height="20" rx="4" fill="var(--pot-rim)"></rect>
+            <ellipse id="soil" cx="240" cy="180" rx="86" ry="8" fill="var(--soil-dry)"></ellipse>
+            <!-- sonda -->
+            <rect x="291" y="146" width="5" height="40" fill="var(--metal)"></rect>
+            <rect x="303" y="146" width="5" height="40" fill="var(--metal)"></rect>
+            <rect x="285" y="128" width="29" height="20" rx="3" fill="var(--pcb)"></rect>
+            <text x="299" y="122" text-anchor="middle" font-size="10" fill="var(--muted)">sonda</text>
+            <path d="M314 138 C360 138 380 150 420 150" fill="none" stroke="var(--ink)" stroke-width="2.5"></path>
+            <!-- arduino -->
+            <rect x="420" y="112" width="124" height="92" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"></rect>
+            <text x="482" y="134" text-anchor="middle" font-size="12" fill="var(--ink)">Arduino</text>
+            <text id="scnRead" x="482" y="156" text-anchor="middle" font-size="14" fill="var(--ink)">A0 = 0</text>
+            <circle id="sR" cx="444" cy="184" r="8" fill="var(--led-off)"></circle>
+            <circle id="sY" cx="468" cy="184" r="8" fill="var(--led-off)"></circle>
+            <circle id="sG" cx="492" cy="184" r="8" fill="var(--led-off)"></circle>
+            <circle id="sB" cx="522" cy="184" r="10" fill="var(--ink)"></circle>
+            <circle cx="522" cy="184" r="3" fill="var(--metal)"></circle>
+          </svg>
+        </div>
+        <div class="gauge">
+          <div class="gauge-bar" id="gauge" style="--g1:30%;--g2:60%"><div class="gauge-mark" id="gMark" style="left:50%"></div></div>
+          <div class="gauge-scale"><span>0 % seca</span><span id="gL1">30 %</span><span id="gL2">60 %</span><span>100 % empapada</span></div>
+        </div>
+      </div>
+      <div class="panel side">
+        <div class="status" id="status" style="color:var(--wet)"><i></i><span id="statusTxt">Bien regada</span></div>
+        <div class="readout">
+          <div class="ro"><span>Lectura A0</span><b id="roRaw">0</b></div>
+          <div class="ro"><span>Humedad</span><b id="roHum">0 %</b></div>
+        </div>
+        <div class="leds">
+          <div class="led r" id="ledR"><i></i>Rojo</div>
+          <div class="led y" id="ledY"><i></i>Amarillo</div>
+          <div class="led g" id="ledG"><i></i>Verde</div>
+          <div class="led b" id="ledB"><i></i>Pito</div>
+          <div class="led p" id="ledP"><i></i>Bomba</div>
+        </div>
+        <div class="ctl">
+          <label for="hRange">Humedad de la tierra <output id="hOut" for="hRange">55 %</output></label>
+          <input type="range" id="hRange" min="0" max="100" step="1" value="55">
+        </div>
+        <div class="actions">
+          <button type="button" class="btn-water" id="waterBtn">Regar con la regadera</button>
+          <button type="button" id="dryBtn">Secar la tierra</button>
+        </div>
+        <div class="toggles">
+          <label class="switch" for="tDry">La tierra se seca con el tiempo<input type="checkbox" id="tDry" checked></label>
+          <label class="switch" for="tAuto">Riego automático con relé y bomba<input type="checkbox" id="tAuto"></label>
+          <label class="switch" for="tSound">Sonido del pito<input type="checkbox" id="tSound"></label>
+        </div>
+        <div>
+          <p class="eyebrow" style="margin-bottom:6px">Monitor serie · 9600 baudios</p>
+          <div class="serial" id="serial" aria-label="Monitor serie simulado"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MATERIALES -->
+  <section id="materiales">
+    <div class="sec-head">
+      <p class="eyebrow">Antes de empezar</p>
+      <h2>Materiales</h2>
+      <p class="muted">Marca cada material a medida que lo tengas en la mesa. Los del riego automático solo hacen falta para el nivel avanzado.</p>
+    </div>
+    <div class="progress"><div class="bar" aria-hidden="true"><i id="matBar"></i></div><span id="matCount" class="mono">0 de 0 listos</span><button type="button" id="matReset">Desmarcar todo</button></div>
+    <div class="mat-grid">
+      <div class="panel mat-group" id="matE"><h3>Electrónica</h3></div>
+      <div class="panel mat-group" id="matR"><h3>Riego automático (avanzado)</h3></div>
+      <div class="panel mat-group" id="matO"><h3>Planta y herramientas</h3></div>
+    </div>
+  </section>
+
+  <!-- ARMADO -->
+  <section id="armado">
+    <div class="sec-head">
+      <p class="eyebrow">Construcción</p>
+      <h2>Arma el circuito</h2>
+      <p class="muted">Cada paso dibuja en la protoboard solo las piezas y cables nuevos. Lo que ya armaste queda en gris claro. Las letras (a–j) y números (1–30) vienen impresos en tu protoboard.</p>
+    </div>
+    <div class="stepper" id="stepper" aria-label="Pasos"></div>
+    <div class="panel board-wrap">
+      <svg id="board" viewBox="0 -18 820 470" role="img" aria-label="Protoboard del detector de humedad, que se dibuja según el paso elegido">
+        <g id="bbHoles"></g><g id="bbWires"></g><g id="bbParts"></g><g id="bbDots"></g>
+      </svg>
+    </div>
+    <div class="build">
+      <article class="panel step-card" id="stepCard" aria-live="polite"></article>
+      <div class="panel holes" id="holes"></div>
+    </div>
+  </section>
+
+  <!-- CÓDIGO -->
+  <section id="codigo">
+    <div class="sec-head">
+      <p class="eyebrow">Programa</p>
+      <h2>Calibra y programa</h2>
+      <p class="muted">Cada sonda da lecturas un poco distintas. Carga el código, mira el Monitor serie con la sonda al aire y luego dentro de un vaso de agua, y escribe aquí esos dos números. El código y el simulador se ajustan solos.</p>
+    </div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:12px">
+      <div class="calib">
+        <label for="cSeco">Lectura al aire (seco)<input type="number" id="cSeco" value="1023" min="0" max="1023"></label>
+        <label for="cMojado">Lectura en agua (mojado)<input type="number" id="cMojado" value="300" min="0" max="1023"></label>
+        <label for="cL1">Seca por debajo de (%)<input type="number" id="cL1" value="30" min="5" max="90"></label>
+        <label for="cL2">Bien regada desde (%)<input type="number" id="cL2" value="60" min="10" max="95"></label>
+        <label for="cRelay" class="fld">Mi relé se activa con
+          <select id="cRelay"><option value="HIGH">HIGH (alto)</option><option value="LOW">LOW (bajo)</option></select>
+        </label>
+      </div>
+      <p class="err" id="cErr" hidden></p>
+    </div>
+    <div class="code">
+      <div class="code-bar"><span>detector_humedad.ino</span><button type="button" id="copyBtn">Copiar código</button></div>
+      <pre id="code" tabindex="0"></pre>
+    </div>
+  </section>
+
+  <!-- PROBLEMAS -->
+  <section id="problemas">
+    <div class="sec-head">
+      <p class="eyebrow">Si algo falla</p>
+      <h2>Problemas comunes</h2>
+    </div>
+    <div>
+      <details><summary>La lectura siempre es 1023 o 0</summary><p>Revisa que el cable vaya del pin A0 del módulo al pin A0 del Arduino. El pin D0 del módulo solo da sí o no y no sirve para medir porcentajes. Confirma también que la sonda esté unida al módulo con sus dos cables.</p></details>
+      <details><summary>La humedad sale negativa o mayor que 100 %</summary><p>Falta calibrar. Mide la sonda al aire y dentro de un vaso de agua, escribe esos números en Calibra y programa, copia el código de nuevo y súbelo.</p></details>
+      <details><summary>La sonda se pone negra o la lectura cambia con los días</summary><p>Las sondas resistivas se oxidan con la corriente y el agua. Sácala de la tierra cuando no la uses. Si quieres que dure meses, usa un sensor capacitivo (v1.2): se conecta igual, pero hay que volver a calibrar.</p></details>
+      <details><summary>El relé hace clic pero la bomba no funciona</summary><p>La bomba se alimenta con el portapilas, no con el Arduino. Conecta: + del portapilas al borne COM del relé, borne NO del relé al cable rojo de la bomba y cable negro de la bomba al − del portapilas. La bomba debe estar sumergida en el agua.</p></details>
+      <details><summary>La bomba se queda prendida cuando la tierra está seca y apagada cuando está mojada</summary><p>Tu módulo relé se activa con LOW. En Calibra y programa, cambia “Mi relé se activa con” a LOW, copia el código y súbelo de nuevo.</p></details>
+      <details><summary>Un LED no enciende</summary><p>El LED tiene polaridad: la pata larga (+) va a la columna de la resistencia y la corta (−) al cable que va al riel −. Dale la vuelta y prueba de nuevo.</p></details>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="quiz">
+    <div class="sec-head">
+      <p class="eyebrow">Repaso</p>
+      <h2>Ponte a prueba</h2>
+      <p class="muted">Cinco preguntas sobre cómo funciona el detector.</p>
+    </div>
+    <div class="panel quiz" id="quizBox"></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var store={
+    get:function(k,d){try{var v=localStorage.getItem(k);return v===null?d:JSON.parse(v);}catch(e){return d;}},
+    set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+  };
+  var NS="http://www.w3.org/2000/svg";
+  function el(tag,attrs,txt){var e=document.createElementNS(NS,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);if(txt)e.textContent=txt;return e;}
+  function $(id){return document.getElementById(id);}
+
+  /* ---------- Ajustes compartidos ---------- */
+  var cSeco=$("cSeco"),cMojado=$("cMojado"),cL1=$("cL1"),cL2=$("cL2"),cRelay=$("cRelay"),tAuto=$("tAuto");
+  function cfg(){
+    var s=parseInt(cSeco.value,10),m=parseInt(cMojado.value,10),a=parseInt(cL1.value,10),b=parseInt(cL2.value,10);
+    if(isNaN(s))s=1023; if(isNaN(m))m=300; if(isNaN(a))a=30; if(isNaN(b))b=60;
+    s=Math.min(Math.max(s,0),1023); m=Math.min(Math.max(m,0),1023);
+    var msg="";
+    if(m>=s){msg="La lectura en agua debe ser menor que la lectura al aire. Uso 300 y 1023 mientras lo corriges.";s=1023;m=300;}
+    else if(b<=a){msg="“Bien regada desde” debe ser mayor que “Seca por debajo de”. Uso 30 % y 60 % mientras lo corriges.";a=30;b=60;}
+    $("cErr").textContent=msg; $("cErr").hidden=!msg;
+    return {seco:s,mojado:m,l1:a,l2:b,relay:cRelay.value,auto:tAuto.checked};
+  }
+
+  /* ---------- Simulador ---------- */
+  var sim={h:55,pump:false,lastBeep:0,drops:[],pour:0};
+  var hRange=$("hRange"),tDry=$("tDry"),tSound=$("tSound"),serial=$("serial");
+  var leafDefs=[[-1,150,8],[1,136,6],[-1,116,4],[1,100,2]];
+  var leavesG=$("leaves"),leafEls=[];
+  leafDefs.forEach(function(d){
+    var g=el("g",{});var p=el("path",{d:"M0 0 Q-26 -22 -54 -10 Q-30 6 0 0 Z"});
+    g.appendChild(p);leavesG.appendChild(g);leafEls.push({g:g,p:p,side:d[0],y:d[1]});
+  });
+  var bud=el("circle",{cx:240,cy:80,r:7});leavesG.appendChild(bud);
+  function hex(c){c=c.trim();if(c[0]!=="#")return [120,120,120];if(c.length===4)c="#"+c[1]+c[1]+c[2]+c[2]+c[3]+c[3];return [parseInt(c.slice(1,3),16),parseInt(c.slice(3,5),16),parseInt(c.slice(5,7),16)];}
+  function mix(a,b,t){return "rgb("+[0,1,2].map(function(i){return Math.round(a[i]+(b[i]-a[i])*t);}).join(",")+")";}
+  var tokens={},tokAt=0;
+  function tok(){var now=Date.now();if(now-tokAt>1000){var cs=getComputedStyle(document.documentElement);["--soil-dry","--soil-wet","--leaf","--leaf-dry"].forEach(function(k){tokens[k]=hex(cs.getPropertyValue(k));});tokAt=now;}return tokens;}
+  function raw(C){var r=C.seco-sim.h/100*(C.seco-C.mojado);r+=Math.round((Math.random()-.5)*6);return Math.min(Math.max(Math.round(r),0),1023);}
+  function humFrom(r,C){var v=Math.round((r-C.seco)*100/(C.mojado-C.seco));return Math.min(Math.max(v,0),100);}
+  var lastT=performance.now(),lastRaw=0,lastHum=0,accum=0;
+  function frame(now){
+    var dt=Math.min((now-lastT)/1000,.1);lastT=now;
+    var C=cfg();
+    if(tDry.checked)sim.h=Math.max(0,sim.h-0.8*dt);
+    if(sim.pour>0){var add=Math.min(sim.pour,30*dt);sim.h=Math.min(100,sim.h+add);sim.pour-=add;}
+    if(C.auto){
+      if(!sim.pump&&lastHum<C.l1)sim.pump=true;
+      if(sim.pump&&lastHum>=C.l2)sim.pump=false;
+    } else sim.pump=false;
+    if(sim.pump)sim.h=Math.min(100,sim.h+6*dt);
+    accum+=dt;
+    if(accum>.25){accum=0;lastRaw=raw(C);lastHum=humFrom(lastRaw,C);}
+    if((sim.pour>0&&Math.random()<.6)||(sim.pump&&Math.random()<.5))spawnDrop(sim.pump&&!(sim.pour>0));
+    stepDrops(dt);
+    draw(C,now);
+    requestAnimationFrame(frame);
+  }
+  var dropsG=$("drops");
+  function spawnDrop(fromHose){
+    var x=fromHose?198+(Math.random()-.5)*4:185+Math.random()*110,y=fromHose?132:30+Math.random()*20;
+    var c=el("circle",{cx:x,cy:y,r:fromHose?3:3.5,fill:"var(--water)"});dropsG.appendChild(c);
+    sim.drops.push({c:c,x:x,y:y,v:fromHose?60:90});
+  }
+  function stepDrops(dt){
+    sim.drops=sim.drops.filter(function(d){d.v+=500*dt;d.y+=d.v*dt;if(d.y>176){d.c.remove();return false;}d.c.setAttribute("cy",d.y);return true;});
+  }
+  var audioCtx=null;
+  function beep(){
+    if(!tSound.checked)return;
+    try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();var o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=1800;g.gain.value=.05;o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+.15);}catch(e){}
+  }
+  function draw(C,now){
+    var T=tok(),t=sim.h/100;
+    $("soil").setAttribute("fill",mix(T["--soil-dry"],T["--soil-wet"],t));
+    var health=Math.min(sim.h/C.l2,1);
+    var leafCol=mix(T["--leaf-dry"],T["--leaf"],health);
+    var droop=(1-health);
+    leafEls.forEach(function(L){
+      var ang=18-droop*60;
+      var x=240+droop*L.side*0;
+      L.g.setAttribute("transform","translate("+x+" "+L.y+") scale("+(-L.side)+" 1) rotate("+ang+")");
+      L.p.setAttribute("fill",leafCol);
+    });
+    bud.setAttribute("fill",leafCol);
+    var bend=droop*26;
+    $("stem").setAttribute("d","M240 182 Q240 130 "+(240+bend)+" "+(82+bend*.6));
+    bud.setAttribute("cx",240+bend);bud.setAttribute("cy",82+bend*.6);
+    $("stem").setAttribute("stroke",leafCol);
+    var zone=lastHum<C.l1?"r":(lastHum<C.l2?"y":"g");
+    ["r","y","g"].forEach(function(z){$("led"+z.toUpperCase()).classList.toggle("on",z===zone);});
+    $("sR").setAttribute("fill",zone==="r"?"var(--w-led-red)":"var(--led-off)");
+    $("sY").setAttribute("fill",zone==="y"?"var(--w-amb)":"var(--led-off)");
+    $("sG").setAttribute("fill",zone==="g"?"var(--w-grn)":"var(--led-off)");
+    var beeping=false;
+    if(zone==="r"){var ph=(now%2000);beeping=ph<200;if(beeping&&now-sim.lastBeep>1500){sim.lastBeep=now;beep();}}
+    $("ledB").classList.toggle("on",beeping);
+    $("sB").setAttribute("fill",beeping?"var(--mid)":"var(--ink)");
+    $("ledP").classList.toggle("on",sim.pump);
+    $("pumpTxt").textContent=sim.pump?"bomba regando":(C.auto?"bomba en espera":"bomba apagada");
+    $("tankGroup").setAttribute("opacity",C.auto?"1":".35");
+    var st=$("status"),txt={r:"Seca: necesita agua",y:"Algo seca",g:"Bien regada"}[zone];
+    st.style.color={r:"var(--dry)",y:"var(--mid)",g:"var(--wet)"}[zone];
+    $("statusTxt").textContent=txt;
+    $("roRaw").textContent=lastRaw;$("roHum").textContent=lastHum+" %";
+    $("scnRead").textContent="A0 = "+lastRaw;
+    $("gMark").style.left=lastHum+"%";
+    $("gauge").style.setProperty("--g1",C.l1+"%");$("gauge").style.setProperty("--g2",C.l2+"%");
+    $("gL1").textContent=C.l1+" %";$("gL2").textContent=C.l2+" %";
+    if(document.activeElement!==hRange){hRange.value=Math.round(sim.h);}
+    $("hOut").textContent=Math.round(sim.h)+" %";
+  }
+  hRange.addEventListener("input",function(){sim.h=parseInt(hRange.value,10);sim.pour=0;});
+  $("waterBtn").addEventListener("click",function(){sim.pour+=22;});
+  $("dryBtn").addEventListener("click",function(){sim.pour=0;sim.h=8;});
+  setInterval(function(){
+    var C=cfg(),d=document.createElement("div");
+    d.textContent="Lectura: "+lastRaw+"  Humedad: "+lastHum+" %"+(sim.pump?"  Bomba: ON":"");
+    serial.appendChild(d);while(serial.children.length>7)serial.removeChild(serial.firstChild);
+  },1000);
+  (function(){var C=cfg();lastRaw=raw(C);lastHum=humFrom(lastRaw,C);})();
+  requestAnimationFrame(frame);
+
+  /* ---------- Materiales ---------- */
+  var materiales=[
+    {id:"h1",g:"E",q:"1",n:"Arduino UNO (o compatible)",d:"Con su cable USB tipo A–B."},
+    {id:"h2",g:"E",q:"1",n:"Sensor de humedad de suelo",d:"Sonda (horquilla) + módulo FC-28 o YL-69 con pines VCC, GND, D0 y A0."},
+    {id:"h3",g:"E",q:"1",n:"Protoboard",d:"De 400 u 830 puntos."},
+    {id:"h4",g:"E",q:"3",n:"LEDs de 5 mm",d:"Rojo, amarillo y verde."},
+    {id:"h5",g:"E",q:"3",n:"Resistencias de 220 Ω",d:"Bandas rojo-rojo-café."},
+    {id:"h6",g:"E",q:"1",n:"Pito (buzzer activo)",d:"Avisa cuando la tierra está seca."},
+    {id:"h7",g:"E",q:"~20",n:"Cables jumper",d:"Macho-macho, y 4 macho-hembra largos para llevar el módulo hasta la maceta."},
+    {id:"h8",g:"R",q:"1",n:"Módulo relé de 5 V (1 canal)",d:"Con pines VCC, GND e IN, y bornes COM, NO y NC."},
+    {id:"h9",g:"R",q:"1",n:"Minibomba de agua sumergible",d:"De 3 a 6 V, con su manguera de unos 50 cm."},
+    {id:"h10",g:"R",q:"1",n:"Portapilas de 4 pilas AA",d:"Alimenta la bomba aparte del Arduino."},
+    {id:"h11",g:"R",q:"1",n:"Recipiente con agua",d:"Un frasco o botella cortada sirve de tanque."},
+    {id:"h12",g:"O",q:"1",n:"Maceta con tierra y una planta",d:"Puede ser un vaso con tierra y unas semillas de fríjol."},
+    {id:"h13",g:"O",q:"1",n:"Vaso con agua",d:"Para calibrar la sonda."},
+    {id:"h14",g:"O",q:"1",n:"Computador con Arduino IDE",d:"Descarga gratuita en arduino.cc."},
+    {id:"h15",g:"O",q:"1",n:"Cinta aislante o termoencogible",d:"Para proteger los empalmes de la bomba del agua."}
+  ];
+  var matState=store.get("hum-mat",{});
+  materiales.forEach(function(m){
+    var lab=document.createElement("label");lab.className="mat"+(matState[m.id]?" done":"");lab.setAttribute("for",m.id);
+    lab.innerHTML='<input type="checkbox" id="'+m.id+'"'+(matState[m.id]?" checked":"")+'><span class="qty">'+m.q+'×</span><span><span class="name">'+m.n+'</span><small>'+m.d+'</small></span>';
+    $("mat"+m.g).appendChild(lab);
+    lab.querySelector("input").addEventListener("change",function(ev){matState[m.id]=ev.target.checked;lab.classList.toggle("done",ev.target.checked);store.set("hum-mat",matState);matProgress();});
+  });
+  function matProgress(){var n=materiales.filter(function(m){return matState[m.id];}).length;$("matBar").style.width=(n/materiales.length*100)+"%";$("matCount").textContent=n+" de "+materiales.length+" listos";}
+  matProgress();
+  $("matReset").addEventListener("click",function(){matState={};store.set("hum-mat",matState);document.querySelectorAll(".mat").forEach(function(l){l.classList.remove("done");l.querySelector("input").checked=false;});matProgress();});
+
+  /* ---------- Protoboard ---------- */
+  var RY={"+t":110,"-t":130,a:160,b:180,c:200,d:220,e:240,f:280,g:300,h:320,i:340,j:360,"-b":390,"+b":410};
+  function bx(c){return 170+(c-1)*20;}
+  function hole(id){var m=id.match(/^([a-j])(\d+)$/);return [bx(+m[2]),RY[m[1]]];}
+  var bbH=$("bbHoles"),bbW=$("bbWires"),bbP=$("bbParts"),bbD=$("bbDots"),grouped=[];
+  function tag(node,g){node.setAttribute("data-g",g);grouped.push(node);return node;}
+  bbH.appendChild(el("rect",{class:"bboard",x:146,y:92,width:632,height:336,rx:8}));
+  [[100,"--w-red"],[140,"--w-blue"],[380,"--w-blue"],[420,"--w-red"]].forEach(function(l){var ln=el("line",{x1:162,x2:762,y1:l[0],y2:l[0],"stroke-width":2});ln.style.stroke="var("+l[1]+")";bbH.appendChild(ln);});
+  Object.keys(RY).forEach(function(r){for(var c=1;c<=30;c++){bbH.appendChild(el("rect",{class:"hole",x:bx(c)-3,y:RY[r]-3,width:6,height:6,rx:1}));}});
+  "abcdefghij".split("").forEach(function(r){bbH.appendChild(el("text",{class:"bbl",x:156,y:RY[r]+4,"text-anchor":"middle"},r));bbH.appendChild(el("text",{class:"bbl",x:768,y:RY[r]+4,"text-anchor":"middle"},r));});
+  [["+t","+"],["-t","−"],["-b","−"],["+b","+"]].forEach(function(p){bbH.appendChild(el("text",{class:"bbl",x:156,y:RY[p[0]]+4,"text-anchor":"middle"},p[1]));});
+  [1,5,10,15,20,25,30].forEach(function(c){bbH.appendChild(el("text",{class:"bbl",x:bx(c),y:264,"text-anchor":"middle"},String(c)));});
+  var AP={"5V":150,"GND":180,"A0":210,"D4":240,"D5":270,"D6":300,"D7":330,"D8":360};
+  bbH.appendChild(el("rect",{class:"ard",x:10,y:112,width:104,height:290,rx:10}));
+  bbH.appendChild(el("text",{class:"lbl",x:20,y:136},"ARDUINO"));
+  Object.keys(AP).forEach(function(p){bbH.appendChild(el("text",{x:100,y:AP[p]+4,"text-anchor":"end"},p));});
+  function wpath(g,col,d){var p=el("path",{class:"wire",d:d});p.style.stroke="var("+col+")";bbW.appendChild(tag(p,g));}
+  function dot(g,x,y){bbD.appendChild(tag(el("circle",{class:"dot",cx:x,cy:y,r:3.5}),g));}
+  function ardWire(g,col,pin,h){var py=AP[pin],e=hole(h),x=e[0],y=e[1],d;
+    if(y>260)d="M114 "+py+" C190 "+py+" "+x+" "+(y+80)+" "+x+" "+y;
+    else d="M114 "+py+" C170 "+py+" "+(x-20)+" "+(y+70)+" "+x+" "+y;
+    wpath(g,col,d);dot(g,114,py);dot(g,x,y);}
+  function railWire(col,pin,rail,c){var py=AP[pin],x=bx(c),y=RY[rail];wpath("rail",col,"M114 "+py+" C150 "+py+" "+(x-40)+" "+y+" "+x+" "+y);dot("rail",114,py);dot("rail",x,y);}
+  function jump(g,col,h,rail,side){var e=hole(h),x=e[0],y1=e[1],y2=RY[rail],o=side*14;wpath(g,col,"M"+x+" "+y1+" C"+(x+o)+" "+y1+" "+(x+o)+" "+y2+" "+x+" "+y2);dot(g,x,y1);dot(g,x,y2);}
+  function part(g){var n=el("g",{});bbP.appendChild(tag(n,g));return n;}
+  function res(g,c1,c2){var x1=bx(c1),x2=bx(c2),y=RY.h,m=(x1+x2)/2,n=part(g);
+    n.appendChild(el("line",{x1:x1,y1:y,x2:x2,y2:y,stroke:"var(--muted)","stroke-width":2.5}));
+    n.appendChild(el("rect",{x:m-20,y:y-7,width:40,height:14,rx:6,fill:"var(--table)",stroke:"var(--ink)","stroke-width":1.5}));
+    [[-10,"--w-red"],[-3,"--w-red"],[4,"--w-gnd"]].forEach(function(b){var r=el("rect",{x:m+b[0],y:y-7,width:4,height:14});r.style.fill="var("+b[1]+")";n.appendChild(r);});
+    dot(g,x1,y);dot(g,x2,y);}
+  function led(g,cA,cK,col){var xa=bx(cA),xk=bx(cK),cx=(xa+xk)/2,y=RY.g,n=part(g);
+    n.appendChild(el("line",{x1:xa,y1:y,x2:cx-4,y2:y-14,stroke:"var(--muted)","stroke-width":2.5}));
+    n.appendChild(el("line",{x1:xk,y1:y,x2:cx+4,y2:y-14,stroke:"var(--muted)","stroke-width":2.5}));
+    var c=el("circle",{cx:cx,cy:y-20,r:10,stroke:"var(--ink)","stroke-width":1.5});c.style.fill="var("+col+")";n.appendChild(c);
+    n.appendChild(el("text",{x:xa-8,y:y-30,"text-anchor":"middle","font-size":"12"},"+"));
+    dot(g,xa,y);dot(g,xk,y);}
+
+  // Paso 2: rieles
+  railWire("--w-red","5V","+t",1); railWire("--w-gnd","GND","-t",1);
+  wpath("rail","--w-gnd","M750 130 C800 130 800 390 750 390"); dot("rail",750,130); dot("rail",750,390);
+  // Paso 3: sensor
+  (function(){var n=part("sen");
+    n.appendChild(el("text",{x:240,y:-4,"text-anchor":"middle"},"Módulo FC-28"));
+    n.appendChild(el("rect",{x:186,y:6,width:108,height:74,rx:6,fill:"var(--pcb)"}));
+    n.appendChild(el("circle",{cx:262,cy:30,r:11,fill:"var(--w-blue)",stroke:"var(--surface)","stroke-width":2}));
+    n.appendChild(el("text",{x:214,y:36,"text-anchor":"middle","font-size":"9",fill:"var(--surface)"},"LM393"));
+    ["VCC","GND","D0","A0"].forEach(function(t,i){var x=bx(3+i);n.appendChild(el("line",{x1:x,y1:80,x2:x,y2:160,stroke:"var(--muted)","stroke-width":2.5}));n.appendChild(el("text",{x:x,y:72,"text-anchor":"middle","font-size":"8.5",fill:"var(--surface)"},t));dot("sen",x,160);});
+    n.appendChild(el("path",{d:"M186 22 C150 22 140 40 104 40",fill:"none",stroke:"var(--ink)","stroke-width":2.5}));
+    n.appendChild(el("rect",{x:66,y:30,width:38,height:18,rx:3,fill:"var(--pcb)"}));
+    n.appendChild(el("rect",{x:70,y:48,width:7,height:50,fill:"var(--metal)"}));
+    n.appendChild(el("rect",{x:93,y:48,width:7,height:50,fill:"var(--metal)"}));
+    n.appendChild(el("text",{x:85,y:16,"text-anchor":"middle","font-size":"11"},"sonda"));
+  })();
+  jump("sen","--w-red","b3","+t",-1); jump("sen","--w-gnd","b4","-t",1); ardWire("sen","--w-pur","A0","c6");
+  // Paso 4: LED rojo
+  ardWire("ledr","--w-led-red","D4","j10"); res("ledr",10,14); led("ledr",14,15,"--w-led-red"); jump("ledr","--w-gnd","i15","-b",1);
+  // Paso 5: LEDs amarillo y verde
+  ardWire("ledyg","--w-amb","D5","j17"); res("ledyg",17,21); led("ledyg",21,22,"--w-amb"); jump("ledyg","--w-gnd","i22","-b",1);
+  ardWire("ledyg","--w-grn","D6","j24"); res("ledyg",24,28); led("ledyg",28,29,"--w-grn"); jump("ledyg","--w-gnd","i29","-b",1);
+  // Paso 6: pito
+  ardWire("bz","--w-yel","D7","j3");
+  (function(){var n=part("bz"),x1=bx(3),x2=bx(6),cx=(x1+x2)/2;
+    n.appendChild(el("line",{x1:x1,y1:300,x2:cx-14,y2:296,stroke:"var(--muted)","stroke-width":2.5}));
+    n.appendChild(el("line",{x1:x2,y1:300,x2:cx+14,y2:296,stroke:"var(--muted)","stroke-width":2.5}));
+    n.appendChild(el("circle",{cx:cx,cy:286,r:19,fill:"var(--ink)"}));
+    n.appendChild(el("circle",{cx:cx,cy:286,r:5,fill:"var(--muted)"}));
+    n.appendChild(el("text",{x:x1-2,y:270,"text-anchor":"middle","font-size":"12"},"+"));
+    dot("bz",x1,300);dot("bz",x2,300);})();
+  jump("bz","--w-gnd","i6","-b",1);
+  // Paso 7: relé
+  (function(){var n=part("rel");
+    n.appendChild(el("text",{x:450,y:-4,"text-anchor":"middle"},"Relé 5 V"));
+    n.appendChild(el("rect",{x:400,y:6,width:100,height:74,rx:6,fill:"var(--pcb)"}));
+    n.appendChild(el("rect",{x:412,y:14,width:46,height:34,rx:3,fill:"var(--w-blue)",stroke:"var(--surface)","stroke-width":1.5}));
+    n.appendChild(el("text",{x:480,y:26,"text-anchor":"middle","font-size":"8",fill:"var(--surface)"},"COM"));
+    n.appendChild(el("text",{x:480,y:40,"text-anchor":"middle","font-size":"8",fill:"var(--surface)"},"NO"));
+    ["VCC","GND","IN"].forEach(function(t,i){var x=bx(14+i);n.appendChild(el("line",{x1:x,y1:80,x2:x,y2:160,stroke:"var(--muted)","stroke-width":2.5}));n.appendChild(el("text",{x:x,y:72,"text-anchor":"middle","font-size":"8.5",fill:"var(--surface)"},t));dot("rel",x,160);});
+    n.appendChild(el("path",{d:"M500 30 C560 30 580 40 620 40",fill:"none",stroke:"var(--w-red)","stroke-width":2.5}));
+    n.appendChild(el("text",{x:626,y:36,"font-size":"11"},"a la bomba"));
+    n.appendChild(el("text",{x:626,y:52,"font-size":"11"},"y las pilas"));
+  })();
+  jump("rel","--w-red","b14","+t",-1); jump("rel","--w-gnd","b15","-t",1); ardWire("rel","--w-blue","D8","c16");
+
+  /* ---------- Pasos ---------- */
+  var pasos=[
+    {t:"Reúne los materiales",g:null,
+     h:["Marca los materiales en la lista de arriba.","Separa la sonda del módulo: se unen con un cable de dos hilos que viene en la bolsa.","Identifica las patas de los LEDs: la larga es el positivo."],
+     tip:["Consejo","Trabaja con el Arduino desconectado del computador hasta el paso 8."],
+     rows:[]},
+    {t:"Prepara los rieles",g:"rail",
+     h:["Cable rojo del pin 5V del Arduino al riel + de arriba.","Cable negro de un pin GND al riel − de arriba.","Cable negro que une el riel − de arriba con el riel − de abajo, en la columna 30."],
+     tip:["Precaución","Nunca unas 5V con GND directamente: es un cortocircuito.","warn"],
+     rows:[["--w-red","Cable rojo","5V → riel + de arriba (col. 1)"],["--w-gnd","Cable negro","GND → riel − de arriba (col. 1)"],["--w-gnd","Cable negro","Riel − de arriba (col. 30) → riel − de abajo (col. 30)"]]},
+    {t:"Conecta el sensor de humedad",g:"sen",
+     h:["Inserta el módulo FC-28 en la fila a: VCC en a3, GND en a4, D0 en a5 y A0 en a6.","Cable rojo de b3 al riel + y cable negro de b4 al riel −.","Cable de c6 al pin A0 del Arduino. El pin D0 queda libre.","Une la sonda al módulo con su cable de dos hilos y clávala en la tierra."],
+     tip:["Ojo","En la maqueta final, lleva el módulo hasta la maceta con 4 cables macho-hembra largos que lleguen a las mismas columnas.","warn"],
+     rows:[["--pcb","Módulo FC-28","VCC a3 · GND a4 · D0 a5 · A0 a6"],["--w-red","Cable rojo","b3 → riel + de arriba"],["--w-gnd","Cable negro","b4 → riel − de arriba"],["--w-pur","Cable morado","c6 → A0"]]},
+    {t:"Conecta el LED rojo",g:"ledr",
+     h:["Resistencia de 220 Ω de h10 a h14.","LED rojo: pata larga en g14 y pata corta en g15.","Cable de j10 al pin D4.","Cable negro de i15 al riel − de abajo."],
+     tip:["Precaución","Sin resistencia el LED se quema y puede dañar el pin del Arduino.","warn"],
+     rows:[["--w-led-red","Cable rojo","D4 → j10"],["--table","Resistencia 220 Ω","h10 → h14"],["--w-led-red","LED rojo","Pata larga g14 · corta g15"],["--w-gnd","Cable negro","i15 → riel − de abajo"]]},
+    {t:"Conecta los LEDs amarillo y verde",g:"ledyg",
+     h:["Amarillo: resistencia de h17 a h21, LED con pata larga en g21 y corta en g22, cable de j17 a D5 y cable negro de i22 al riel −.","Verde: resistencia de h24 a h28, LED con pata larga en g28 y corta en g29, cable de j24 a D6 y cable negro de i29 al riel −."],
+     tip:["Consejo","Es el mismo montaje del LED rojo, repetido dos veces más a la derecha."],
+     rows:[["--w-amb","Cable amarillo","D5 → j17"],["--table","Resistencia 220 Ω","h17 → h21"],["--w-amb","LED amarillo","Pata larga g21 · corta g22"],["--w-gnd","Cable negro","i22 → riel − de abajo"],["--w-grn","Cable verde","D6 → j24"],["--table","Resistencia 220 Ω","h24 → h28"],["--w-grn","LED verde","Pata larga g28 · corta g29"],["--w-gnd","Cable negro","i29 → riel − de abajo"]]},
+    {t:"Conecta el pito",g:"bz",
+     h:["Pito: pata + (la larga) en g3 y pata − en g6.","Cable de j3 al pin D7.","Cable negro de i6 al riel − de abajo."],
+     tip:["Consejo","Usa un pito activo: suena solo con recibir 5V, sin código especial."],
+     rows:[["--w-yel","Cable amarillo","D7 → j3"],["--ink","Pito","Pata + g3 · pata − g6"],["--w-gnd","Cable negro","i6 → riel − de abajo"]]},
+    {t:"Avanzado: relé y bomba",g:"rel",
+     h:["Inserta el módulo relé: VCC en a14, GND en a15 e IN en a16.","Cable rojo de b14 al riel +, cable negro de b15 al riel − y cable de c16 al pin D8.","Circuito de la bomba, separado del Arduino: + del portapilas al borne COM del relé, borne NO del relé al cable rojo de la bomba y cable negro de la bomba al − del portapilas.","Sumerge la bomba en el tanque y lleva la manguera hasta la maceta."],
+     tip:["Precaución","Nunca conectes la bomba a los pines del Arduino: necesita más corriente de la que pueden dar. Y no la hagas funcionar fuera del agua.","warn"],
+     rows:[["--pcb","Módulo relé","VCC a14 · GND a15 · IN a16"],["--w-red","Cable rojo","b14 → riel + de arriba"],["--w-gnd","Cable negro","b15 → riel − de arriba"],["--w-blue","Cable azul","c16 → D8"],["--w-red","Portapilas +","→ borne COM del relé"],["--w-red","Bomba (rojo)","← borne NO del relé"],["--w-gnd","Bomba (negro)","→ − del portapilas"]]},
+    {t:"Carga el código y calibra",g:null,
+     h:["Conecta el Arduino al computador.","Copia el código de Calibra y programa, pégalo en un sketch nuevo y súbelo.","Abre el Monitor serie (9600 baudios). Anota la lectura con la sonda al aire y luego con la sonda en un vaso de agua.","Escribe esos dos números en la calibración, copia el código de nuevo y vuelve a subirlo."],
+     tip:["Consejo","Seca bien la sonda después de meterla al vaso, antes de clavarla en la tierra."],
+     rows:[]},
+    {t:"Prueba con la planta",g:null,
+     h:["Clava la sonda en la tierra, sin que el módulo toque el agua.","Riega poco a poco y mira cómo cambian los LEDs.","Anota durante varios días la humedad de la mañana y de la tarde.","Sube al blog del grupo una foto del montaje y la tabla de tus mediciones."],
+     tip:["Reto","Agrega una pantalla LCD que muestre el porcentaje, o un segundo sensor para otra maceta."],
+     rows:[]}
+  ];
+  var cur=Math.min(Math.max(store.get("hum-step",0),0),pasos.length-1),done=store.get("hum-done",{}),showAll=false;
+  var stepper=$("stepper"),card=$("stepCard"),holes=$("holes");
+  function groupsUpTo(i){var s=[];for(var k=0;k<=i;k++)if(pasos[k].g)s.push(pasos[k].g);return s;}
+  function renderBoard(){
+    var vis=showAll?groupsUpTo(pasos.length-1):groupsUpTo(cur),now=pasos[cur].g;
+    grouped.forEach(function(n){var g=n.getAttribute("data-g");var v=vis.indexOf(g)>=0;n.style.display=v?"":"none";n.classList.toggle("old",v&&!showAll&&g!==now&&now!==null);});
+  }
+  function renderStepper(){
+    stepper.innerHTML="";
+    pasos.forEach(function(p,i){var b=document.createElement("button");b.type="button";b.className="chip"+(done[i]?" is-done":"");b.textContent=i+1;
+      b.setAttribute("aria-label","Paso "+(i+1)+": "+p.t+(done[i]?" (listo)":""));if(i===cur&&!showAll)b.setAttribute("aria-current","step");
+      b.addEventListener("click",function(){showAll=false;go(i);});stepper.appendChild(b);});
+    var sp=document.createElement("span");sp.className="spacer";stepper.appendChild(sp);
+    var all=document.createElement("button");all.type="button";all.id="allBtn";all.textContent=showAll?"Volver al paso "+(cur+1):"Ver circuito completo";
+    all.setAttribute("aria-pressed",showAll?"true":"false");
+    all.addEventListener("click",function(){showAll=!showAll;render();});stepper.appendChild(all);
+  }
+  function renderCard(){
+    var p=pasos[cur];
+    card.innerHTML='<p class="eyebrow">Paso '+(cur+1)+' de '+pasos.length+'</p><h3>'+p.t+'</h3><ol>'+p.h.map(function(x){return"<li>"+x+"</li>";}).join("")+'</ol>'+
+      '<div class="note'+(p.tip[2]?" "+p.tip[2]:"")+'"><strong>'+p.tip[0]+'</strong><span>'+p.tip[1]+'</span></div>'+
+      '<div class="step-foot"><label for="stepDone"><input type="checkbox" id="stepDone"'+(done[cur]?" checked":"")+'> Paso terminado</label>'+
+      '<div class="step-nav"><button type="button" id="prevB"'+(cur===0?" disabled":"")+'>Anterior</button><button type="button" class="btn-primary" id="nextB"'+(cur===pasos.length-1?" disabled":"")+'>Siguiente</button></div></div>';
+    $("stepDone").addEventListener("change",function(e){done[cur]=e.target.checked;store.set("hum-done",done);renderStepper();});
+    $("prevB").addEventListener("click",function(){go(cur-1);});
+    $("nextB").addEventListener("click",function(){if(!done[cur]){done[cur]=true;store.set("hum-done",done);}go(cur+1);});
+    var rows=p.rows;
+    holes.innerHTML='<h3>Hueco por hueco</h3>'+(rows.length?rows.map(function(r){return '<div class="hrow"><i class="sw" style="background:var('+r[0]+')"></i><div><b>'+r[1]+'</b><span>'+r[2]+'</span></div></div>';}).join(""):'<p class="empty">En este paso no se conecta nada nuevo.</p>');
+  }
+  function render(){renderStepper();renderCard();renderBoard();}
+  function go(i){if(i<0||i>=pasos.length)return;cur=i;store.set("hum-step",cur);render();}
+  render();
+
+  /* ---------- Código ---------- */
+  function codeText(C){
+    var off=C.relay==="HIGH"?"LOW":"HIGH";
+    return [
+"// Detector de humedad para plantas",
+"// Sensor FC-28 en A0, LEDs en D4-D6, pito en D7, relé en D8",
+"",
+"const int SENSOR = A0;",
+"const int LED_ROJO = 4;",
+"const int LED_AMARILLO = 5;",
+"const int LED_VERDE = 6;",
+"const int PITO = 7;",
+"const int RELE = 8;",
+"",
+"// Calibración: lecturas de TU sonda",
+"const int VALOR_SECO = "+C.seco+";     // sonda al aire",
+"const int VALOR_MOJADO = "+C.mojado+";   // sonda en agua",
+"",
+"// Niveles en porcentaje",
+"const int LIMITE_SECO = "+C.l1+";",
+"const int LIMITE_HUMEDO = "+C.l2+";",
+"",
+"// Riego automático (necesita relé y bomba)",
+"const bool RIEGO_AUTOMATICO = "+(C.auto?"true":"false")+";",
+"const int RELE_ENCENDIDO = "+C.relay+";",
+"const int RELE_APAGADO = "+off+";",
+"",
+"bool regando = false;",
+"",
+"void setup() {",
+"  Serial.begin(9600);",
+"  pinMode(LED_ROJO, OUTPUT);",
+"  pinMode(LED_AMARILLO, OUTPUT);",
+"  pinMode(LED_VERDE, OUTPUT);",
+"  pinMode(PITO, OUTPUT);",
+"  pinMode(RELE, OUTPUT);",
+"  digitalWrite(RELE, RELE_APAGADO);",
+"}",
+"",
+"void loop() {",
+"  int lectura = analogRead(SENSOR);",
+"  int humedad = map(lectura, VALOR_SECO, VALOR_MOJADO, 0, 100);",
+"  humedad = constrain(humedad, 0, 100);",
+"",
+"  Serial.print(\"Lectura: \");",
+"  Serial.print(lectura);",
+"  Serial.print(\"  Humedad: \");",
+"  Serial.print(humedad);",
+"  Serial.println(\" %\");",
+"",
+"  // Apaga todo y enciende solo el LED del nivel",
+"  digitalWrite(LED_ROJO, LOW);",
+"  digitalWrite(LED_AMARILLO, LOW);",
+"  digitalWrite(LED_VERDE, LOW);",
+"",
+"  if (humedad < LIMITE_SECO) {",
+"    digitalWrite(LED_ROJO, HIGH);",
+"    digitalWrite(PITO, HIGH);     // aviso corto",
+"    delay(200);",
+"    digitalWrite(PITO, LOW);",
+"  } else if (humedad < LIMITE_HUMEDO) {",
+"    digitalWrite(LED_AMARILLO, HIGH);",
+"  } else {",
+"    digitalWrite(LED_VERDE, HIGH);",
+"  }",
+"",
+"  // Riega desde \"seca\" hasta \"bien regada\"",
+"  if (RIEGO_AUTOMATICO) {",
+"    if (!regando && humedad < LIMITE_SECO) regando = true;",
+"    if (regando && humedad >= LIMITE_HUMEDO) regando = false;",
+"  } else {",
+"    regando = false;",
+"  }",
+"  digitalWrite(RELE, regando ? RELE_ENCENDIDO : RELE_APAGADO);",
+"",
+"  delay(1000);",
+"}"
+    ].join("\n");
+  }
+  function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  var marks=/^const (int|bool) (VALOR_SECO|VALOR_MOJADO|LIMITE_SECO|LIMITE_HUMEDO|RIEGO_AUTOMATICO|RELE_ENCENDIDO|RELE_APAGADO) =/;
+  function hl(line){
+    var ci=line.indexOf("//"),code=ci>=0?line.slice(0,ci):line,com=ci>=0?line.slice(ci):"";
+    var out=esc(code).replace(/("[^"]*")/g,'<span class="s">$1</span>')
+      .replace(/\b(void|const|int|bool|if|else|true|false)\b/g,'<span class="k">$1</span>');
+    out+=com?'<span class="c">'+esc(com)+'</span>':"";
+    if(marks.test(line))out="<mark>"+out+"</mark>";
+    return out;
+  }
+  var currentCode="";
+  function renderCode(){currentCode=codeText(cfg());$("code").innerHTML=currentCode.split("\n").map(hl).join("\n");}
+  [cSeco,cMojado,cL1,cL2].forEach(function(i){i.addEventListener("input",renderCode);});
+  cRelay.addEventListener("change",renderCode); tAuto.addEventListener("change",renderCode);
+  renderCode();
+  var copyBtn=$("copyBtn");
+  copyBtn.addEventListener("click",function(){
+    function ok(){copyBtn.textContent="Copiado";setTimeout(function(){copyBtn.textContent="Copiar código";},1800);}
+    function fallback(){var r=document.createRange();r.selectNodeContents($("code"));var s=window.getSelection();s.removeAllRanges();s.addRange(r);copyBtn.textContent="Texto seleccionado: usa Ctrl+C";setTimeout(function(){copyBtn.textContent="Copiar código";},2600);}
+    try{navigator.clipboard.writeText(currentCode).then(ok,fallback);}catch(e){fallback();}
+  });
+
+  /* ---------- Quiz ---------- */
+  var preguntas=[
+    {q:"¿A qué pin del Arduino va la salida A0 del módulo?",o:["A0","D7","5V","GND"],a:0,e:"A0 es una entrada analógica: lee valores de 0 a 1023, no solo encendido o apagado."},
+    {q:"Si la tierra tiene más agua, ¿qué pasa con la lectura de la sonda resistiva?",o:["Baja","Sube","No cambia","Se vuelve negativa"],a:0,e:"El agua conduce la corriente. Entre más agua, menos resistencia y menor lectura."},
+    {q:"¿Para qué sirve la resistencia de 220 Ω al lado de cada LED?",o:["Limita la corriente para que el LED no se queme","Hace que el LED brille más","Mide la humedad","Guarda energía"],a:0,e:"Sin resistencia pasa demasiada corriente: el LED se quema y el pin del Arduino puede dañarse."},
+    {q:"¿Por qué la bomba se conecta a pilas a través del relé y no a un pin del Arduino?",o:["Necesita más corriente de la que da un pin","Porque el Arduino no tiene pines libres","Para que gaste menos agua","No hay ninguna razón"],a:0,e:"Un pin entrega como máximo unos 40 mA y la bomba necesita cientos. El relé funciona como un interruptor que el Arduino controla."},
+    {q:"Tu sonda marca 1023 al aire y 300 en agua. Si ahora marca 661, ¿qué humedad muestra el código?",o:["Cerca de 50 %","Cerca de 66 %","Cerca de 34 %","100 %"],a:0,e:"661 está justo a la mitad entre 1023 y 300, así que map() da cerca de 50 %."}
+  ];
+  var qi=0,ans=[];
+  var qb=$("quizBox");
+  function renderQuiz(){
+    if(qi>=preguntas.length){
+      var ok=ans.filter(function(x){return x;}).length;
+      qb.innerHTML='<div class="q"><p class="eyebrow">Resultado</p><h3>'+ok+' de '+preguntas.length+' correctas</h3><p class="muted">'+(ok===preguntas.length?"Dominas cómo funciona el detector.":"Repasa las secciones del simulador y del armado, y vuelve a intentarlo.")+'</p><div class="actions"><button type="button" class="btn-primary" id="qAgain">Intentar de nuevo</button></div></div>';
+      $("qAgain").addEventListener("click",function(){qi=0;ans=[];renderQuiz();});return;
+    }
+    var p=preguntas[qi];
+    var dots=preguntas.map(function(_,i){return '<i class="'+(i<ans.length?(ans[i]?"ok":"no"):"")+(i===qi?" cur":"")+'"></i>';}).join("");
+    var order=p.o.map(function(_,i){return i;});
+    order.sort(function(a,b){return ((a*7+qi*3)%5)-((b*7+qi*3)%5);});
+    qb.innerHTML='<div class="q"><div class="q-top"><p class="eyebrow">Pregunta '+(qi+1)+' de '+preguntas.length+'</p><div class="dots" aria-hidden="true">'+dots+'</div></div><h3>'+p.q+'</h3><div class="opts" id="opts">'+order.map(function(i){return '<button type="button" data-i="'+i+'">'+p.o[i]+'</button>';}).join("")+'</div><div id="fb"></div></div>';
+    qb.querySelectorAll(".opts button").forEach(function(b){b.addEventListener("click",function(){
+      var i=+b.dataset.i,right=i===p.a;ans.push(right);
+      qb.querySelectorAll(".opts button").forEach(function(x){x.disabled=true;var xi=+x.dataset.i;if(xi===p.a)x.classList.add("right");else if(xi===i)x.classList.add("wrong");});
+      $("fb").innerHTML='<div class="feedback"><strong>'+(right?"Correcto. ":"No es esa. ")+'</strong>'+p.e+'</div><div class="actions" style="margin-top:12px"><button type="button" class="btn-primary" id="qNext">'+(qi===preguntas.length-1?"Ver resultado":"Siguiente pregunta")+'</button></div>';
+      $("qNext").addEventListener("click",function(){qi++;renderQuiz();});
+    });});
+  }
+  renderQuiz();
+
+  if(location.hash){var t=$(location.hash.slice(1));if(t)t.scrollIntoView();}
+})();
+</script>
+
+</body>
+</html>
